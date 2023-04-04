@@ -1,4 +1,10 @@
 html {
-    max-width: 400ex;
-    scale: 1.5;
+    max-width: 100ex;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1em;
+}
+
+figure {
+    text-align: center;
 }
