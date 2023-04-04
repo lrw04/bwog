@@ -1,0 +1,20 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '() :silent t)
+  )
+
+(defpackage :ros.script.bwog.3889575031
+  (:use :cl))
+(in-package :ros.script.bwog.3889575031)
+
+(load "bwog.lisp")
+
+(defun main (repo &rest argv)
+  (declare (ignorable argv))
+  (generate repo))
+;;; vim: set ft=lisp lisp:

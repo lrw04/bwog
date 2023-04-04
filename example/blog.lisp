@@ -34,7 +34,9 @@
                        ("\\F" 0 "\\mathbb{F}")
                        ("\\sfC" 0 "\\mathsf{C}")
                        ("\\vphi" 0 "\\varphi")))
-(setf *char-replacements* '((#\。 #\．)))
+(setf *character-replacements* '((#\。 . #\．)))
 (setf *tag-titles* '(("probsel" . "题选")
-                             ("artin" . "Artin 做法")
-                             ("hsmath" . "高中数学备课")))
+                     ("artin" . "Artin 做法")
+                     ("hsmath" . "高中数学备课")))
+(setf *preamble* 
+      (alexandria:read-file-into-string (format nil "~a/preamble.tex" *repo*)))

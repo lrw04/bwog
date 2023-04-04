@@ -200,6 +200,13 @@
       ;; without arguments
       (format nil "\\newcommand{~a}{~a}" (car macro) (caddr macro))))
 
+(defun first-line (str)
+  (with-input-from-string (in str) (read-line in nil)))
+
+(defun rest-lines (str)
+  (let ((fl (first-line str)))
+    (subseq str (1+ (length fl)))))
+
 (defun assemble-latex-source (src preamble macros)
   (format nil
           "\\documentclass{standalone}~%~a~{~a~}~%\\begin{document}~a\\end{document}"
@@ -284,13 +291,6 @@
     (read-line in)
     (read in)))
 
-(defun first-line (str)
-  (with-input-from-string (in str) (read-line in nil)))
-
-(defun rest-lines (str)
-  (let ((fl (first-line str)))
-    (subseq str (1+ (length fl)))))
-
 (defun extract-post-content (file)
   (let* ((fl (first-line file))
          (file-without-first-line (subseq file (1+ (length fl)))))
@@ -303,9 +303,10 @@
       (extract-iter file-without-first-line))))
 
 (defvar *latex-macros* nil)
-(defvar *preamble* "\\usepackage{tikz}")
+(defvar *preamble* "\\usepackage{tikz-cd}")
 (defvar *tag-titles* nil)
 (defvar *title* "default title")
+(defvar *character-replacements* '((#\。 . #\．)))
 
 (defvar *tags* (make-hash-table))
 (defvar *posts* nil)
@@ -314,9 +315,12 @@
 (defun without-wetd-extension (str)
   (subseq str 0 (- (length str) 5)))
 
+(defun replace-characters (str table)
+  (map 'string (lambda (x) (or (cdr (assoc x table)) x)) str))
+
 (defun read-post (path)
   (let* ((meta (read-post-meta path))
-         (content (extract-post-content (alexandria:read-file-into-string path)))
+         (content (extract-post-content (replace-characters (alexandria:read-file-into-string path) *character-replacements*)))
          (tree (parse content))
          (pagep (getf meta :page))
          (tags (getf meta :tags))
@@ -326,14 +330,27 @@
     (map nil (lambda (x) (push name (gethash x *tags*))) tags)))
 
 (defun index-page ()
-  (let ((sorted (sort (remove-if #'cadr *posts*) #'string< :key #'cadddr)))
+  (let ((sorted (sort (remove-if #'cadr *posts*) #'string> :key #'cadddr)))
     (format nil "~a" sorted)))
 (defun post-page (post)
   (to-html (elt post 5) *preamble* *latex-macros*))
-(defun tag-page ())
+(defun tags-page ()
+  "")
 
 (defun generate (repo)
   (setf *repo* repo)
-  (load (format nil "~a/blog.lisp" repo))  ; redefine index-page, post-page, tag-page, and global variables
+  (load (format nil "~a/blog.lisp" repo)) ; redefine index-page, post-page, tags-page, and global variables
   (map nil #'read-post (directory (format nil "~a/*.wetd" repo)))
-  (print *posts*))
+  (let ((index-out (open (format nil "~a/index.html" repo) :direction :output :if-exists :supersede)))
+    (write-string (index-page) index-out)
+    (close index-out))
+  (let ((tags-out (open (format nil "~a/tags.html" repo) :direction :output :if-exists :supersede)))
+    (write-string (tags-page) tags-out)
+    (close tags-out))
+  (map nil (lambda (post)
+             (let ((out (open
+                         (format nil "~a/~a.html" repo (car post))
+                         :direction :output :if-exists :supersede)))
+               (write-string (post-page post) out)
+               (close out)))
+       *posts*))
