@@ -1,5 +1,6 @@
 (ql:quickload :alexandria)
 (ql:quickload :uiop)
+(ql:quickload :yason)
 
 ;;; escaping utils
 (defun escape (char table)
@@ -263,6 +264,16 @@
                  (image-html url (to-html-subtree text preamble macros))
                  (format nil "<a href=\"~a\">~a</a>" url (to-html-subtree text preamble macros)))))))))
 
+(defun to-html-plaintext (tree)
+  (format nil "~{~a~}" (map 'list
+                            (lambda (x) (xml-escape
+                                         (cond
+                                           ((stringp x) x)
+                                           ((eql (car x) 'emph) (cadr x))
+                                           ((eql (car x) 'math) (caddr x))
+                                           ((eql (car x) 'link) (caddr x)))))
+                            tree)))
+
 (defun or-func (a b)
   (or a b))
 
@@ -329,27 +340,50 @@
     (push (list name pagep tags date (title tree) tree) *posts*)
     (map nil (lambda (x) (push name (gethash x *tags*))) tags)))
 
+(defun repo-file (file)
+  (format nil "~a/~a" *repo* file))
+
+(defun katex-macros ()
+  (let ((map (make-hash-table :test #'equal)))
+    (map nil (lambda (macro) (setf (gethash (elt macro 0) map) (elt macro 2)))
+         *latex-macros*)
+    (with-output-to-string (out)
+      (yason:encode map out))))
+
+(defun template (title main)
+  (format nil (alexandria:read-file-into-string (repo-file "template.html")) title main (katex-macros)))
+
 (defun index-page ()
   (let ((sorted (sort (remove-if #'cadr *posts*) #'string> :key #'cadddr)))
-    (format nil "~a" sorted)))
+    (template *title* (format nil "<p><a href=\"about.html\">About me</a></p><p>Article list: </p> <ul>~a</ul>"
+                              (reduce (lambda (x y) (concatenate 'string x y))
+                                      (map 'list
+                                           (lambda (post)
+                                             (format nil
+                                                     "<li><a href=\"~a.html\">~a (~a)</a></li>"
+                                                     (car post)
+                                                     (to-html-subtree (elt post 4) *preamble* *latex-macros*)
+                                                     (elt post 3)))
+                                           sorted))))))
 (defun post-page (post)
-  (to-html (elt post 5) *preamble* *latex-macros*))
+  (let ((html (to-html (elt post 5) *preamble* *latex-macros*)))
+    (template (to-html-plaintext (elt post 4)) html)))
 (defun tags-page ()
   "")
 
 (defun generate (repo)
-  (setf *repo* repo)
-  (load (format nil "~a/blog.lisp" repo)) ; redefine index-page, post-page, tags-page, and global variables
-  (map nil #'read-post (directory (format nil "~a/*.wetd" repo)))
-  (let ((index-out (open (format nil "~a/index.html" repo) :direction :output :if-exists :supersede)))
+ (setf *repo* repo)
+  (load (repo-file "blog.lisp")) ; redefine index-page, post-page, tags-page, and global variables
+  (map nil #'read-post (directory (repo-file "*.wetd")))
+  (let ((index-out (open (repo-file "index.html") :direction :output :if-exists :supersede)))
     (write-string (index-page) index-out)
     (close index-out))
-  (let ((tags-out (open (format nil "~a/tags.html" repo) :direction :output :if-exists :supersede)))
+  (let ((tags-out (open (repo-file "tags.html") :direction :output :if-exists :supersede)))
     (write-string (tags-page) tags-out)
     (close tags-out))
   (map nil (lambda (post)
              (let ((out (open
-                         (format nil "~a/~a.html" repo (car post))
+                         (repo-file (concatenate 'string (car post) ".html"))
                          :direction :output :if-exists :supersede)))
                (write-string (post-page post) out)
                (close out)))
