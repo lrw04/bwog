@@ -117,8 +117,8 @@
 (defun read-paragraph (in line)
   (labels ((read-paragraph-iter (in acc)
              (let* ((cur (read-char in nil))
-                    (sp (member cur '(#\: #\# #\` #\Newline) :test #'char=)))
-               (unread-char cur in)
+                    (sp (member cur '(#\: #\# #\` #\Newline) :test #'eql)))
+               (if cur (unread-char cur in))
                (if (or (not cur) sp)
                    `(paragraph ,(read-inline (format nil "~{~a~%~}" (reverse acc))))
                    (read-paragraph-iter in (cons (read-line in) acc))))))
@@ -285,7 +285,7 @@
     (read in)))
 
 (defun first-line (str)
-  (read-line (make-string-input-stream str)))
+  (with-input-from-string (in str) (read-line in nil)))
 
 (defun rest-lines (str)
   (let ((fl (first-line str)))
@@ -295,8 +295,8 @@
   (let* ((fl (first-line file))
          (file-without-first-line (subseq file (1+ (length fl)))))
     (labels ((extract-iter (str)
-               (let ((fl (first-line str))
-                     (str-without-fl (subseq str (1+ (length fl)))))
+               (let* ((fl (first-line str))
+                      (str-without-fl (subseq str (1+ (length fl)))))
                  (if (string= fl "---")
                      str-without-fl
                      (extract-iter str-without-fl)))))
@@ -309,6 +309,7 @@
 
 (defvar *tags* (make-hash-table))
 (defvar *posts* nil)
+(defvar *repo* "")
 
 (defun without-wetd-extension (str)
   (subseq str 0 (- (length str) 5)))
@@ -325,11 +326,14 @@
     (map nil (lambda (x) (push name (gethash x *tags*))) tags)))
 
 (defun index-page ()
-  (let ((sorted (sort *posts* #'string< :key #'cadddr)))
-    ()))
-(defun post-page ())
+  (let ((sorted (sort (remove-if #'cadr *posts*) #'string< :key #'cadddr)))
+    (format nil "~a" sorted)))
+(defun post-page (post)
+  (to-html (elt post 5) *preamble* *latex-macros*))
 (defun tag-page ())
 
 (defun generate (repo)
+  (setf *repo* repo)
   (load (format nil "~a/blog.lisp" repo))  ; redefine index-page, post-page, tag-page, and global variables
-  (map nil #'read-post (directory (format nil "~a/*.wetd" repo))))
+  (map nil #'read-post (directory (format nil "~a/*.wetd" repo)))
+  (print *posts*))
