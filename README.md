@@ -8,7 +8,7 @@ bwog is a static blog generator written in Common Lisp. Its highlights include:
 
 ## Installation
 
-bwog is dependant on `tectonic`, `cairo`, and `roswell`. After cloning the repository, run:
+bwog is dependent on `tectonic`, `poppler`, and `roswell`. After cloning the repository, run:
 
 ```sh
 ros build bwog.ros
