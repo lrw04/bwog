@@ -239,7 +239,7 @@
              ((string= (cadr tree) "ul")
               (format nil "<ul>~{<li>~a</li>~}</ul>" (map 'list (lambda (x) (to-html x preamble macros)) (caddr tree))))
              ((string= (cadr tree) "ol")
-              (format nil "<ol>~{<li>~a</li>~}</ul>" (map 'list (lambda (x) (to-html x preamble macros)) (caddr tree))))
+              (format nil "<ol>~{<li>~a</li>~}</ol>" (map 'list (lambda (x) (to-html x preamble macros)) (caddr tree))))
              (t (format nil "<div class=\"~a\">~a</div>" (cadr tree) (to-html-subtree (caddr tree) preamble macros)))))
           ((eql type 'codeblock)
            (cond
