@@ -245,7 +245,7 @@
            (cond
              ((string= (cadr tree) "!latex")
               (latex-in-html (caddr tree) preamble macros))
-             (t (format nil "<pre class=\"~a\"><code>~a</code></pre>" (cadr tree) (caddr tree)))))
+             (t (format nil "<pre><code class=\"language-~a\">~a</code></pre>" (cadr tree) (caddr tree)))))
           ((eql type 'title)
            (format nil "<h~a>~a</h~a>" (cadr tree) (to-html-subtree (caddr tree) preamble macros) (cadr tree)))
           ((eql type 'emph)
