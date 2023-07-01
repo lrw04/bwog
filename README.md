@@ -1,20 +1,15 @@
 # bwog
 
-bwog is a static blog generator written in Common Lisp. Its highlights include:
+bwog is a static blog generator written in Chez Scheme. Its highlights include:
 
 - character replacement
 - customizable KaTeX macros
 - embeddable LaTeX figures
+- full configurability
 
 ## Installation
 
-bwog is dependent on `tectonic`, `poppler`, and `roswell`. After cloning the repository, run:
-
-```sh
-ros build bwog.ros
-```
-
-Then copy the resulting `bwog` file (or `bwog.exe` on Windows) into a folder in your `PATH`.
+bwog is dependent on TeX Live. Copy \*.scm to your blog repository.
 
 ## Usage
 

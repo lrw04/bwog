@@ -1,59 +1,75 @@
-(library (util)
-  (export xml-escape tex-escape count-from-beginning join-lines)
-  (import (rnrs))
-  (define escape                        
-    (lambda (c table)                   
-      (let ((r (assq c table)))         
-        (if r                           
-            (cdr r)                     
-            (string c)))))
-
-  (define escape-string
-    (lambda (s table)
-      (apply string-append
-             (map (lambda (c) (escape c table))
-                  (string->list s)))))
-  
-  (define xml-escape                    
-    (lambda (s)                           
-      (escape-string s '((#\< . "&lt;") 
-                         (#\> . "&gt;")                        
-                         (#\& . "&amp;")))))
-  
-  (define tex-escape                    
-    (lambda (s)                           
-      (escape-string s '((#\# . "\\#") 
-                         (#\$ . "\\$")                        
-                         (#\% . "\\%")
-                         (#\& . "\\&")
-                         (#\{ . "\\{")
-                         (#\} . "\\}")
-                         (#\_ . "\\_")
-                         (#\^ . "\\^{}")
-                         (#\~ . "\\~{}")
-                         (#\\ . "\\textbackslash{}")))))
-  
-  (define count-from-beginning
-    (lambda (line c)
-      (define cfb-iter
-        (lambda (line c beginning count)
-          (if (> (string-length line) beginning)
-              (if (char=? (string-ref line beginning) c)
-                  (cfb-iter line c (+ beginning 1) (+ count 1))
-                  count)
-              count)))
-      (cfb-iter line c 0 0)))
-
-  (define join-lines
-    (lambda (lines)
-      (apply string-append (map (lambda (s) (string-append s (string #\newline))) lines)))))
-
 (library (wetd)
   (export read-wetd)
   (import (util) (rnrs))
 
   ;; TODO
-  (define (read-inline port) (get-string-all port))
+  (define special?
+    (lambda (c) (memq c '(#\\ #\$ #\` #\@ #\*))))
+
+  (define read-math
+    (lambda (port)
+      (let ((c (lookahead-char port)))
+        (if (or (eof-object? c) (not (char=? c #\$)))
+            #f
+            (let ((type (cfb-port port #\$)))
+              (if (or (< type 1) (> type 2))
+                  (error 'read-math "invalid math opener")
+                  (let ((text (read-until-k port #\$ type)))
+                    `(math
+                      ,(if (= type 1) 'inline 'display)
+                      text))))))))
+
+  (define read-code
+    (lambda (port)
+      (let ((c (lookahead-char port)))
+        (if (or (eof-object? c) (not (char=? c #\`)))
+            #f
+            (let ((backticks (cfb-port port #\`)))
+              (let ((text (read-until-k port #\` backticks)))
+                `(code ,text)))))))
+
+  (define read-escaped
+    (lambda (port)
+      (let ((c (lookahead-char port)))
+        (if (or (eof-object? c) (not (char=? c #\\)))
+            #f
+            (let* ((directive (get-char port))
+                   (c (get-char port)))
+              (string c))))))
+  
+  (define read-link
+    (lambda (port)
+      #f))
+
+  (define read-emph
+    (lambda (port)
+      #f))
+  
+  (define read-text
+    (lambda (port)
+      (define read-text-iter
+        (lambda (port acc)
+          (let ((c (lookahead-char port)))
+            (if (or (eof-object? c) (special? c))
+                (if (null? acc)
+                    #f
+                    (apply string (reverse acc)))
+                (read-text-iter port (cons (get-char port) acc))))))
+      (read-text-iter port '())))
+
+  (define read-inline
+    (lambda (port)
+      (define read-inline-iter
+        (lambda (port acc)
+          (cond
+           ((read-math port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           ((read-code port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           ((read-escaped port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           ((read-link port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           ((read-emph port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           ((read-text port) => (lambda (node) (read-inline-iter port (cons node acc))))
+           (else (reverse acc)))))
+      (read-inline-iter port '())))
 
   (define title?
     (lambda (line)
@@ -152,14 +168,3 @@
   (define read-wetd
     (lambda (port)
       (read-div port ":document"))))
-
-(library (html)
-  (export html->string wetd->html)
-  (import (rnrs))
-  
-  ;; TODO
-  (define html->string
-    (lambda (s) s))
-
-  (define wetd->html
-    (lambda (s) s)))
