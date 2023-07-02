@@ -2,7 +2,6 @@
   (export read-wetd)
   (import (util) (rnrs))
 
-  ;; TODO
   (define special?
     (lambda (c) (memq c '(#\\ #\$ #\` #\@ #\*))))
 
@@ -17,7 +16,7 @@
                   (let ((text (read-until-k port #\$ type)))
                     `(math
                       ,(if (= type 1) 'inline 'display)
-                      text))))))))
+                      ,text))))))))
 
   (define read-code
     (lambda (port)
@@ -39,11 +38,32 @@
   
   (define read-link
     (lambda (port)
-      #f))
+      (let ((c (lookahead-char port)))
+        (if (or (eof-object? c) (not (char=? c #\@)))
+            #f
+            (let* ((directive (get-char port))
+                   (lparen (get-char port))
+                   (href (read-until-k port #\) 1))
+                   (lparen-2 (get-char port))
+                   (text (read-until-k port #\) 1))
+                   (text-port (open-string-input-port text))
+                   (node (read-inline text-port)))
+              (close-input-port text-port)
+              (if (or (not (equal? lparen #\()) (not (equal? lparen-2 #\()))
+                  (error 'read-link "invalid link" lparen lparen-2)
+                  `(link ,href ,node)))))))
 
   (define read-emph
     (lambda (port)
-      #f))
+      (let ((c (lookahead-char port)))
+        (if (or (eof-object? c) (not (char=? c #\*)))
+            #f
+            (let* ((directive (get-char port))
+                   (text (read-until-k port #\* 1))
+                   (text-port (open-string-input-port text))
+                   (node (read-inline text-port)))
+              (close-input-port text-port)
+              `(emph ,node))))))
   
   (define read-text
     (lambda (port)
@@ -93,7 +113,7 @@
 
   (define codeblock-end?
     (lambda (line backticks)
-      (string=? line (make-string #\` backticks))))
+      (string=? line (make-string backticks #\`))))
 
   (define codeblock-lang
     (lambda (line)
@@ -127,11 +147,11 @@
       (define read-par-iter
         (lambda (port acc)
           (let* ((c (lookahead-char port))
-                 (special (memq c '(#\: #\# #\` #\newline))))
-            (if (or (eof-object? c) (special))
-                (let* ((port (open-string-input-port (join-lines (reverse acc))))
-                       (node `(par ,(read-inline port))))
-                  (close-input-port port)
+                 (special (member c '(#\: #\# #\` #\newline))))
+            (if (or (eof-object? c) special)
+                (let* ((text-port (open-string-input-port (join-lines (reverse acc))))
+                       (node `(par ,(read-inline text-port))))
+                  (close-input-port text-port)
                   node)
                 (read-par-iter port (cons (get-line port) acc))))))
       (read-par-iter port (list line))))

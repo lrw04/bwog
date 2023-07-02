@@ -89,8 +89,8 @@
       (define read-until-k-iter
         (lambda (port c k acc count)
           (let ((e (lookahead-char port)))
-            (cond ((eof-object? e) (apply string (reverse acc)))
-                  ((= k count) (apply string (reverse (apply-k cdr k acc))))
+            (cond ((= k count) (apply string (reverse (apply-k cdr k acc))))
+                  ((eof-object? e) (apply string (reverse acc)))
                   ((char=? e c) (read-until-k-iter port c k (cons (get-char port) acc) (+ count 1)))
                   (else (read-until-k-iter port c k (cons (get-char port) acc) 0))))))
       (read-until-k-iter port c k '() 0))))
