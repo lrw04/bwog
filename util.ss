@@ -1,12 +1,14 @@
 (library (util)
   (export xml-escape
           tex-escape
+          string-escape
           count-from-beginning
           join-lines
           cfb-port
           read-until
           assert-with-msg
-          read-until-k)
+          read-until-k
+          make-list)
   (import (rnrs))
   (define escape                        
     (lambda (c table)                   
@@ -39,6 +41,11 @@
                          (#\^ . "\\^{}")
                          (#\~ . "\\~{}")
                          (#\\ . "\\textbackslash{}")))))
+
+  (define string-escape
+    (lambda (s)
+      (escape-string s '((#\newline . "\\n")
+                         (#\" . "\\\"")))))
   
   (define count-from-beginning
     (lambda (line c)
@@ -93,4 +100,10 @@
                   ((eof-object? e) (apply string (reverse acc)))
                   ((char=? e c) (read-until-k-iter port c k (cons (get-char port) acc) (+ count 1)))
                   (else (read-until-k-iter port c k (cons (get-char port) acc) 0))))))
-      (read-until-k-iter port c k '() 0))))
+      (read-until-k-iter port c k '() 0)))
+
+  (define make-list
+    (lambda (k fill)
+      (if (= k 0)
+          '()
+          (cons fill (make-list (- k 1) fill))))))

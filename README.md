@@ -9,7 +9,7 @@ bwog is a static blog generator written in Chez Scheme. Its highlights include:
 
 ## Installation
 
-bwog is dependent on TeX Live. Copy \*.scm to your blog repository.
+bwog is dependent on dvisvgm and tectonic. Copy \*.ss to your blog repository.
 
 ## Usage
 

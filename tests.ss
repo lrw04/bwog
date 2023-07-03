@@ -1,4 +1,4 @@
-(import (util) (wetd) (xml) (rnrs))
+(import (util) (wetd) (html) (rnrs))
 
 (define-syntax test
   (syntax-rules ()
@@ -11,6 +11,8 @@
 
 (test (equal? (xml-escape "<not-a-&-tag>") "&lt;not-a-&amp;-tag&gt;"))
 (test (equal? (tex-escape "some $$'s do not denote mathematics.") "some \\$\\$'s do not denote mathematics."))
+(test (equal? (string-escape "text \"text enclosed in quotes\" with
+endlines") "text \\\"text enclosed in quotes\\\" with\\nendlines"))
 (test (equal? (count-from-beginning "## title" #\#) 2))
 (test (equal? (count-from-beginning "nothing to see here" #\$) 0))
 (test (equal? (join-lines (list "a b" "c d")) "a b\nc d\n"))
@@ -41,5 +43,16 @@ some code
 :div
 content
 :end"))))
+
+(define html->string
+  (lambda (tree)
+    (let-values (((port extractor) (open-string-output-port)))
+      (html>> tree port)
+      (close-output-port port)
+      (extractor))))
+
+(test (equal? (html->string '(img ((src . "a.png")))) "<img src=\"a.png\">"))
+(test (equal? (html->string '(p () ("paragraph content" (em () ("emphasized"))))) "<p>paragraph content<em>emphasized</em></p>"))
+(test (equal? (html->string '(script () ((raw "hljs.highlightAll()&&1;")))) "<script>hljs.highlightAll()&&1;</script>"))
 
 (display "all tests passed.\n")
