@@ -1,0 +1,23 @@
+(library (xml)
+  (export xml>>)
+  (import (util) (html) (rnrs))
+
+  (define xml>>
+    (lambda (tree port)
+      (cond ((string? tree)             ; "string"
+             (display (xml-escape tree) port))
+            ((and (pair? tree) (eq? (car tree) 'raw)) ; (raw "string")
+             (display (cadr tree) port))
+            ((pair? tree); (element props children)
+             (let ((tag (car tree))
+                   (props (alist->props (cadr tree)))
+                   (children (caddr tree)))
+               (display "<" port)
+               (display tag port)
+               (display props port)
+               (display ">" port)
+               (for-each xml>> children (make-list (length children) port))
+               (display "</" port)
+               (display tag port)
+               (display ">" port)))
+            (else (error 'xml>> "not a string or tree node"))))))

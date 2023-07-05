@@ -2,17 +2,11 @@
 
 bwog is a static blog generator written in Chez Scheme. Its highlights include:
 
-- character replacement
-- customizable KaTeX macros
-- embeddable LaTeX figures
+- powerful filter system (character replacement, KaTeX macros, LaTeX figure, ...)
 - full configurability
 
 ## Installation
 
-bwog is dependent on dvisvgm and tectonic. Copy \*.ss to your blog repository.
+bwog is dependent on dvisvgm (included in TeX Live) and tectonic. Copy \*.ss except tests.ss, and Makefile to your blog repository.
 
 ## Usage
-
-Prepare a folder with `blog.lisp` in it. You should redefine global variables and functions in it, as it will be loaded at runtime.
-
-Read `bwog.lisp` for more details. Then, run `bwog <repo>` to build it. Output will be written to the same directory.
