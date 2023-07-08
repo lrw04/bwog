@@ -1,2 +1,2 @@
 ((propagation-rules . ((latex-macros . append)))
- (read-files . ("preamble.tex")))
+ (aux-files . ("preamble.tex")))

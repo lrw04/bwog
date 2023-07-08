@@ -1,8 +1,10 @@
 (library (filters)
   (export character-replacement
           latex-figures
-          katex-math)
+          lists)
+  (import (rnrs) (wetd))
 
+;;; TODO
   (define character-replacement '())
   (define latex-figures '())
-  (define katex-math '()))
+  (define lists '()))

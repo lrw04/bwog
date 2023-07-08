@@ -1,13 +1,11 @@
 ;;;; top level program
-(import (wetd) (html) (xml) (filters) (util) (rnrs))
+(import (wetd) (html) (xml) (filters) (generators) (util) (rnrs))
 
 (define propagation-rules '((title . none)
                             (filters . append)
                             (files . none)
-                            (subdirs . none)
-                            (index . propagate)
                             (template . propagate)
-                            (feed . propagate)
+                            (generators . append)
                             (files . propagate)))
 
 (define read-datum-from-file
@@ -15,10 +13,30 @@
     (let* ((port (open-file-input-port path
                                        (file-options)
                                        'block
-                                       (utf-8-codec)))
+                                       (make-transcoder (utf-8-codec))))
            (datum (get-datum port)))
       (close-input-port port)
       datum)))
+
+(define read-string-from-file
+  (lambda (path)
+    (let* ((port (open-file-input-port path
+                                       (file-options)
+                                       'block
+                                       (make-transcoder (utf-8-codec))))
+           (s (get-string-all port)))
+      (close-input-port port)
+      s)))
+
+(define read-wetd-from-file
+  (lambda (path)
+    (let* ((port (open-file-input-port path
+                                       (file-options)
+                                       'block
+                                       (make-transcoder (utf-8-codec))))
+           (tree (read-wetd port)))
+      (close-input-port port)
+      tree)))
 
 (define write-file
   (lambda (path content)
@@ -30,8 +48,12 @@
       (close-output-port port))))
 
 (define join-path
-  (lambda (a b)
-    (string-append a "/" b)))
+  (lambda components
+    (cond ((null? components) ".")
+          ((= (length components) 1) (car components))
+          (else (string-append (car components)
+                               "/"
+                               (apply join-path (cdr components)))))))
 
 (define access-config
   (lambda (key config default)
@@ -63,8 +85,42 @@
                 propagation-rules))))
 
 (define wetd->html
-  (lambda (tree filters)
-    '()))
+  (lambda (tree)
+    (if (string? tree)
+        tree
+        ;; cons
+        (case (car tree)
+          ((math) `(span
+                    ((class . ,(string-append "math "
+                                              (if (eq? (cadr tree) 'display)
+                                                  "display"
+                                                  "inline"))))
+                    (,(caddr tree))))
+          ((code) (let ((text (cadr tree)))
+                    `(code () (,text))))
+          ((link) (let ((href (cadr tree))
+                        (text (caddr tree)))
+                    `(a ((href . ,href)) ,(map wetd->html text))))
+          ((emph) `(em () ,(map wetd->html (cadr tree))))
+          ((title) (let ((level (cadr tree))
+                         (children (caddr tree)))
+                     `(,(string->symbol (string-append "h" (number->string level)))
+                       ()
+                       ,(map wetd->html children))))
+          ((codeblock) (let ((language (cadr tree))
+                             (text (caddr tree)))
+                         `(pre ,(if (> (string-length language) 0)
+                                    `((class . ,(string-append "language-" language)))
+                                    '())
+                               ((code () (,text))))))
+          ((par) (let ((children (cadr tree)))
+                   `(p () ,(map wetd->html children))))
+          ((div) (let ((type (cadr tree))
+                       (children (caddr tree)))
+                   `(div ((class . ,type)) ,(map wetd->html children))))
+          ((html) (let ((children (cadr tree)))
+                    children))
+          (else (error 'wetd->html "unrecognized wetd tag"))))))
 
 (define read-folder
   (lambda (path)
@@ -78,7 +134,10 @@
   (lambda (repo path)
     '()))
 
-(let ((path (if (> (length (command-line)) 1)
-                (cadr (command-line))
-                ".")))
-  (generate (read-repo path) path))
+(html>> (wetd->html (read-wetd-from-file "test.wetd")) (current-output-port))
+(newline)
+
+'(let ((path (if (> (length (command-line)) 1)
+                 (cadr (command-line))
+                 ".")))
+   (generate (read-repo path) path))
