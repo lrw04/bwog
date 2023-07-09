@@ -1,10 +1,8 @@
 (library (html)
-  (export void-elements
-          alist->props
-          html>>)
+  (export html>> xml>>)
   (import (util) (rnrs))
 
-  (define void-elements
+  (define html-void-elements
     '(area base br col embed hr img input link meta param source track wbr))
 
   (define alist->props
@@ -17,9 +15,10 @@
                                    (string-escape (cdr p))
                                    "\""))
                   alist))))
-  
-  (define html>>
-    (lambda (tree port)
+
+  (define make-ml-writer
+    (lambda (void-elements)
+      (lambda (tree port)
       (cond ((string? tree)             ; "string"
              (display (xml-escape tree) port))
             ((and (pair? tree) (eq? (car tree) 'raw)) ; (raw "string")
@@ -44,3 +43,6 @@
                (display tag port)
                (display ">" port)))
             (else (error 'html>> "not a string or tree node"))))))
+            
+  (define html>> (make-ml-writer html-void-elements))
+  (define xml>> (make-ml-writer '())))

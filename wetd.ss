@@ -2,189 +2,97 @@
   (export read-wetd)
   (import (util) (rnrs))
 
-  (define special?
-    (lambda (c) (memq c '(#\\ #\$ #\` #\@ #\*))))
+  (define read-inline-from-string
+    (lambda (s) s))
 
-  (define read-math
-    (lambda (port)
-      (let ((c (lookahead-char port)))
-        (if (or (eof-object? c) (not (char=? c #\$)))
-            #f
-            (let ((type (cfb-port port #\$)))
-              (if (or (< type 1) (> type 2))
-                  (error 'read-math "invalid math opener")
-                  (let ((text (read-until-k port #\$ type)))
-                    `(math
-                      ,(if (= type 1) 'inline 'display)
-                      ,text))))))))
+  (define make-startp
+    (lambda (c)
+      (lambda (line)
+        (> (count-from-beginning line c) 0))))
 
-  (define read-code
-    (lambda (port)
-      (let ((c (lookahead-char port)))
-        (if (or (eof-object? c) (not (char=? c #\`)))
-            #f
-            (let ((backticks (cfb-port port #\`)))
-              (let ((text (read-until-k port #\` backticks)))
-                `(code ,text)))))))
+  (define make-endline
+    (lambda (c)
+      (lambda (line)
+        (make-string (count-from-beginning line c) c))))
 
-  (define read-escaped
-    (lambda (port)
-      (let ((c (lookahead-char port)))
-        (if (or (eof-object? c) (not (char=? c #\\)))
-            #f
-            (let* ((directive (get-char port))
-                   (c (get-char port)))
-              (string c))))))
-  
-  (define read-link
-    (lambda (port)
-      (let ((c (lookahead-char port)))
-        (if (or (eof-object? c) (not (char=? c #\@)))
-            #f
-            (let* ((directive (get-char port))
-                   (lparen (get-char port))
-                   (href (read-until-k port #\) 1))
-                   (lparen-2 (get-char port))
-                   (text (read-until-k port #\) 1))
-                   (text-port (open-string-input-port text))
-                   (node (read-inline text-port)))
-              (close-input-port text-port)
-              (if (or (not (equal? lparen #\()) (not (equal? lparen-2 #\()))
-                  (error 'read-link "invalid link" lparen lparen-2)
-                  `(link ,href ,node)))))))
-
-  (define read-emph
-    (lambda (port)
-      (let ((c (lookahead-char port)))
-        (if (or (eof-object? c) (not (char=? c #\*)))
-            #f
-            (let* ((directive (get-char port))
-                   (text (read-until-k port #\* 1))
-                   (text-port (open-string-input-port text))
-                   (node (read-inline text-port)))
-              (close-input-port text-port)
-              `(emph ,node))))))
-  
-  (define read-text
-    (lambda (port)
-      (define read-text-iter
-        (lambda (port acc)
-          (let ((c (lookahead-char port)))
-            (if (or (eof-object? c) (special? c))
-                (if (null? acc)
-                    #f
-                    (apply string (reverse acc)))
-                (read-text-iter port (cons (get-char port) acc))))))
-      (read-text-iter port '())))
-
-  (define read-inline
-    (lambda (port)
-      (define read-inline-iter
-        (lambda (port acc)
-          (cond
-           ((read-math port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           ((read-code port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           ((read-escaped port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           ((read-link port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           ((read-emph port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           ((read-text port) => (lambda (node) (read-inline-iter port (cons node acc))))
-           (else (reverse acc)))))
-      (read-inline-iter port '())))
-
-  (define title?
-    (lambda (line)
-      (let ((hash-count (count-from-beginning line #\#)))
-        (and (> hash-count 0)
-             (> (string-length line) hash-count)
-             (char=? #\space (string-ref line hash-count))))))
-
-  (define read-title
-    (lambda (line)
-      (let* ((hash-count (count-from-beginning line #\#))
-             (title (substring line (+ 1 hash-count) (string-length line)))
-             (port (open-string-input-port title))
-             (node `(title ,hash-count ,(read-inline port))))
+  (define get-param
+    (lambda (line-w/o-start)
+      (let* ((port (open-string-input-port line-w/o-start))
+             (datum (get-datum port))
+             (s (get-string-all port)))
         (close-input-port port)
-        node)))
+        (cons datum s))))
 
-  (define codeblock?
+  (define container-start? (make-startp #\:))
+  (define container-end-line (make-endline #\:))
+  (define raw-start? (make-startp #\`))
+  (define raw-end-line (make-endline #\`))
+  (define leaf? (make-startp #\!))
+
+  (define make-block-param
+    (lambda (c)
+      (lambda (line)
+        (car (get-param (substring line
+                                   (count-from-beginning line c)
+                                   (string-length line)))))))
+
+  (define container-param (make-block-param #\:))
+  (define raw-param (make-block-param #\`))
+
+  (define read-raw
+    (lambda (port end-line param)
+      (letrec ((read-raw-iter
+                (lambda (acc)
+                  (let ((line (get-line port)))
+                    (cond ((eof-object? line) (append param (list (join-lines (reverse acc)))))
+                          ((string=? line end-line) (append param (list (join-lines (reverse acc)))))
+                          (else (read-raw-iter (cons line acc))))))))
+        (read-raw-iter '()))))
+
+  (define read-leaf
     (lambda (line)
-      (>= (count-from-beginning line #\`) 3)))
-
-  (define codeblock-end?
-    (lambda (line backticks)
-      (string=? line (make-string backticks #\`))))
-
-  (define codeblock-lang
-    (lambda (line)
-      (substring line (count-from-beginning line #\`) (string-length line))))
-
-  (define read-codeblock
-    (lambda (port type)
-      (let ((backticks (count-from-beginning type #\`)))
-        (define rcb-iter
-          (lambda (port type acc)
-            (let ((current-line (get-line port)))
-              (if (eof-object? current-line)
-                  `(codeblock ,(codeblock-lang type) ,(join-lines (reverse acc)))
-                  (if (codeblock-end? current-line backticks)
-                      `(codeblock ,(codeblock-lang type) ,(join-lines (reverse acc)))
-                      (rcb-iter port type (cons current-line acc)))))))
-        (rcb-iter port type '()))))
-
-  (define div?
-    (lambda (line)
-      (and (> (string-length line) 0)
-           (not (string=? line ":end"))
-           (char=? (string-ref line 0) #\:))))
-
-  (define div-end?
-    (lambda (line)
-      (string=? line ":end")))
+      (let* ((line-w/o-start (substring line
+                                        (count-from-beginning line #\!)
+                                        (string-length line)))
+             (data (get-param line-w/o-start))
+             (param (car data))
+             (children (read-inline-from-string (cdr data))))
+        (append param (list children)))))
 
   (define read-par
     (lambda (port line)
-      (define read-par-iter
-        (lambda (port acc)
-          (let* ((c (lookahead-char port))
-                 (special (member c '(#\: #\# #\` #\newline))))
-            (if (or (eof-object? c) special)
-                (let* ((text-port (open-string-input-port (join-lines (reverse acc))))
-                       (node `(par ,(read-inline text-port))))
-                  (close-input-port text-port)
-                  node)
-                (read-par-iter port (cons (get-line port) acc))))))
-      (read-par-iter port (list line))))
+      (letrec ((read-par-iter (lambda (acc)
+                                (let ((c (lookahead-char port)))
+                                  (case c
+                                    ((#\: #\` #\! #\newline)
+                                     `(par
+                                       ,(read-inline-from-string (join-lines (reverse acc)))))
+                                    (else (read-par-iter (cons (get-line port) acc))))))))
+        (read-par-iter (list line)))))
   
-  (define read-div
-    (lambda (port type)
-      (define read-div-iter
-        (lambda (port type acc)
-          (let ((current-line (get-line port)))
-            (if (eof-object? current-line)
-                `(div ,(substring type 1 (string-length type)) ,(reverse acc))
-                (cond
-                 ((title? current-line)
-                  (read-div-iter port
-                                 type
-                                 (cons (read-title current-line) acc)))
-                 ((codeblock? current-line)
-                  (read-div-iter port
-                                 type
-                                 (cons (read-codeblock port current-line)
-                                       acc)))
-                 ((div-end? current-line)
-                  `(div ,(substring type 1 (string-length type)) ,(reverse acc)))
-                 ((div? current-line)
-                  (read-div-iter port type (cons (read-div port current-line)
-                                                 acc)))
-                 ((string=? current-line "") (read-div-iter port type acc))
-                 (else
-                  (read-div-iter port
-                                 type
-                                 (cons (read-par port current-line) acc))))))))
-      (read-div-iter port type '())))
-  
+  (define read-container
+    (lambda (port end-line param)
+      (letrec ((read-container-iter
+                (lambda (acc)
+                  (let ((line (get-line port)))
+                    (cond ((eof-object? line) (append param (list (reverse acc))))
+                          ((equal? line end-line) (append param (list (reverse acc))))
+                          ((container-start? line)
+                           (read-container-iter (cons (read-container port
+                                                                      (container-end-line line)
+                                                                      (container-param line))
+                                                      acc)))
+                          ((raw-start? line)
+                           (read-container-iter (cons (read-raw port
+                                                                (raw-end-line line)
+                                                                (raw-param line))
+                                                      acc)))
+                          ((leaf? line)
+                           (read-container-iter (cons (read-leaf line) acc)))
+                          ((string=? line "") (read-container-iter acc))
+                          (else (read-container-iter (cons (read-par port line) acc))))))))
+        (read-container-iter '()))))
+
   (define read-wetd
     (lambda (port)
-      (read-div port ":document"))))
+      (read-container port #f '(document)))))
