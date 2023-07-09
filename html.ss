@@ -19,7 +19,9 @@
   (define make-ml-writer
     (lambda (void-elements)
       (lambda (tree port)
-      (cond ((string? tree)             ; "string"
+      (cond ((char? tree)
+             (display (xml-escape (string tree)) port))
+            ((string? tree)             ; "string"
              (display (xml-escape tree) port))
             ((and (pair? tree) (eq? (car tree) 'raw)) ; (raw "string")
              (display (cadr tree) port))

@@ -2,8 +2,42 @@
   (export read-wetd)
   (import (util) (rnrs))
 
+  ;; read one inline element from port
+  (define read-inline
+    (lambda (port end)
+      (let ((c (get-char port)))
+        (cond ((eof-object? c) c)
+              ((equal? end c)  (eof-object))
+              ((char=? c #\@) (let ((c (lookahead-char port)))
+                                (case c
+                                  ((#\@ #\` #\*) c)
+                                  (else (let* ((datum (get-datum port))
+                                               (c (lookahead-char port)))
+                                          (case c
+                                            ((#\`)
+                                             (let ((count (cfb-port port #\`)))
+                                               (append datum (list (read-until-k port #\` count)))))
+                                            ((#\*)
+                                             (get-char port)
+                                             (append datum
+                                                     (list (read-inline-from-port port #\*))))
+                                            (else datum)))))))
+              (else c)))))
+
+  (define read-inline-from-port
+    (lambda (port end)
+      (letrec ((iter (lambda (acc)
+                       (let ((datum (read-inline port end)))
+                         (cond ((eof-object? datum) (reverse acc))
+                               (else (iter (cons datum acc))))))))
+        (iter '()))))
+
   (define read-inline-from-string
-    (lambda (s) s))
+    (lambda (s)
+      (let* ((port (open-string-input-port s))
+             (data (read-inline-from-port port #f)))
+        (close-input-port port)
+        data)))
 
   (define make-startp
     (lambda (c)
