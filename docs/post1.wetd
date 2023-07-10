@@ -1,6 +1,54 @@
-`((date . "2023/07/01"))
+`((title . "Post 1: examples")
+  (date . "2023/07/01"))
 ---
 
-# Post 1
+!(h 1)Post 1: examples
 
-Hello, world! $\GL_n(\F)$
+Hello, world! @(math)`\GL_n(\F)` @(s)*strong* @(em)*emph*
+@(uline)*underline* @(st)*strikethrough* @(verb)`verbatim`
+@(link "https://blog.lrw04.online/")*link* @(img "img.png")*image*
+Revised@(sup)*6* Report on the Algorithmic Language Scheme
+a@(sub)*1* is an integer
+
+:(ol)
+::(item)
+item 1
+::
+::(item)
+item 1
+::
+:
+
+:(ul)
+!(item)item 1
+!(item)item 2
+:
+
+::(quote)
+some random quote from a famous person
+::
+
+``(code scheme)
+(set! list (lambda l l))
+``
+
+!(hr)
+
+:(figure)
+@(img "image.png")*image*
+
+``(latex)
+\begin{tikzcd}
+T
+\arrow[drr, bend left, "x"]
+\arrow[ddr, bend right, "y"]
+\arrow[dr, dotted, "{(x,y)}" description] & & \\
+& X \times_Z Y \arrow[r, "p"] \arrow[d, "q"]
+& X \arrow[d, "f"] \\
+& Y \arrow[r, "g"]
+& Z
+\end{tikzcd}
+``
+
+Image
+:

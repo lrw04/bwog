@@ -1,5 +1,5 @@
 (library (wetd)
-  (export read-wetd)
+  (export read-wetd read-wetd-from-file)
   (import (util) (rnrs))
 
   ;; read one inline element from port
@@ -10,7 +10,7 @@
               ((equal? end c)  (eof-object))
               ((char=? c #\@) (let ((c (lookahead-char port)))
                                 (case c
-                                  ((#\@ #\` #\*) c)
+                                  ((#\@ #\` #\*) (get-char port) c)
                                   (else (let* ((datum (get-datum port))
                                                (c (lookahead-char port)))
                                           (case c
@@ -34,10 +34,11 @@
 
   (define read-inline-from-string
     (lambda (s)
-      (let* ((port (open-string-input-port s))
-             (data (read-inline-from-port port #f)))
-        (close-input-port port)
-        data)))
+      (if (eof-object? s) '()
+          (let* ((port (open-string-input-port s))
+                 (data (read-inline-from-port port #f)))
+            (close-input-port port)
+            data))))
 
   (define make-startp
     (lambda (c)
@@ -129,4 +130,18 @@
 
   (define read-wetd
     (lambda (port)
-      (read-container port #f '(document)))))
+      (read-container port #f '(document))))
+
+  (define read-wetd-from-file
+    (lambda (file)
+      (let ((port (open-file-input-port file
+                                        (file-options)
+                                        'block
+                                        (make-transcoder (utf-8-codec)))))
+        (letrec ((iter (lambda ()
+                         (let ((line (get-line port)))
+                           (if (equal? line "---") port (iter))))))
+          (iter)
+          (let ((tree (read-wetd port)))
+            (close-input-port port)
+            tree))))))

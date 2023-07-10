@@ -8,8 +8,11 @@
           read-until
           assert-with-msg
           read-until-k
-          make-list)
+          make-list
+          read-datum-from-file
+          join-path)
   (import (rnrs))
+  
   (define escape                        
     (lambda (c table)                   
       (let ((r (assq c table)))         
@@ -106,4 +109,22 @@
     (lambda (k fill)
       (if (= k 0)
           '()
-          (cons fill (make-list (- k 1) fill))))))
+          (cons fill (make-list (- k 1) fill)))))
+
+  (define read-datum-from-file
+    (lambda (path)
+      (let* ((port (open-file-input-port path
+                                         (file-options)
+                                         'block
+                                         (make-transcoder (utf-8-codec))))
+             (datum (get-datum port)))
+        (close-input-port port)
+        datum)))
+
+  (define join-path
+    (lambda components
+      (cond ((null? components) ".")
+            ((= (length components) 1) (car components))
+            (else (string-append (car components)
+                                 "/"
+                                 (apply join-path (cdr components))))))))

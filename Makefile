@@ -1,9 +1,9 @@
 CHEZ=chez
 
-all: bwog.ss
+doc: bwog.ss
 	$(CHEZ) --program bwog.ss docs
 
 test: tests.ss
 	$(CHEZ) --program tests.ss
 
-.PHONY: all test
+.PHONY: doc test

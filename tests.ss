@@ -31,7 +31,14 @@ endlines") "text \\\"text enclosed in quotes\\\" with\\nendlines"))
                          #\space (ul (#\u #\l)) #\newline))
                    (nested ((par (#\n #\e #\s #\t #\e #\d #\newline))))
                    (code "code\n")))
-                 (par (#\p #\a #\r #\a #\g #\r #\a #\p #\h #\newline))
+                 (par (#\p #\a #\r #\a #\g #\r #\a #\p #\h #\space #\f #\o #\l #\l
+                       #\o #\w #\space #\@ #\l #\r #\w #\0 #\4 #\_ #\space #\o #\n
+                       #\space #\t #\w #\i #\t #\t #\e #\r #\, #\space #\@ #\l #\r
+                       #\w #\0 #\4 #\space #\o #\n #\space #\g #\i #\t #\h #\u #\b
+                       #\, #\space #\a #\n #\d #\space #\l #\r #\w #\0 #\4 #\space
+                       #\o #\n #\space #\b #\i #\l #\i #\b #\i #\l #\i #\, #\space
+                       #\t #\h #\a #\n #\k #\s #\space #\m #\e #\o #\w #\!
+                       #\newline))
                  (code "code text\n")))
               (read-wetd (open-string-input-port
                           "!(title)Title 1
@@ -44,7 +51,7 @@ nested
 code
 ``
 ::
-paragraph
+paragraph follow @@lrw04_ on twitter, @@lrw04 on github, and lrw04 on bilibili, thanks meow!
 
 ``(code)
 code text
