@@ -10,6 +10,7 @@
           read-until-k
           make-list
           read-datum-from-file
+          join
           join-path)
   (import (rnrs))
   
@@ -48,7 +49,8 @@
   (define string-escape
     (lambda (s)
       (escape-string s '((#\newline . "\\n")
-                         (#\" . "\\\"")))))
+                         (#\" . "\\\"")
+                         (#\\ . "\\\\")))))
   
   (define count-from-beginning
     (lambda (line c)
@@ -120,6 +122,11 @@
              (datum (get-datum port)))
         (close-input-port port)
         datum)))
+
+  (define join
+    (lambda (sep strings)
+      (cond ((< (length strings) 2) (apply string-append strings))
+            (else (string-append (car strings) (apply string-append (apply append (map (lambda (s) (list sep s)) (cdr strings)))))))))
 
   (define join-path
     (lambda components

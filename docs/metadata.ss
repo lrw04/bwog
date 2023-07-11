@@ -2,7 +2,65 @@
   (config . ((title . "Docs for bwog")
              (link . "https://lrw04.github.io/bwog/")
              (index-template . ,(lambda (config files)
-                                  ))
+                                  (default-base
+                                    `((link ((rel . "stylesheet")
+                                             (href . "style.css")))
+                                      (title () (,(config-title config))))
+                                    `((p () ("bwog is a static blog generator written in Chez Scheme. This is its documentation website."))
+                                      (p () ("Document listing:"))
+                                      (ul () ,(map (lambda (file)
+                                                     `(li ()
+                                                          ((a ((href . ,(string-append (file-filename file)
+                                                                                       ".html")))
+                                                              (,(file-title file))))))
+                                                   files))))))
+             (template . ,(lambda (config document)
+                            (default-base
+                              `((link ((rel . "stylesheet")
+                                       (href . "style.css")))
+                                (link ((rel . "stylesheet")
+                                       (href . "https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css")))
+                                (link ((rel . "stylesheet")
+                                       (href . "https://cdn.jsdelivr.net/npm/katex@0/dist/katex.min.css")))
+                                (title () (,(cdr (assoc 'title config)))))
+                              `((a ((href . "index.html")) ("Home"))
+                                ,document
+                                (script ((src . "https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js")) ())
+                                (script ((src . "https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js")) ())
+                                (script ((src . "https://cdn.jsdelivr.net/npm/katex@0/dist/katex.min.js")) ())
+                                (script () ((raw ,(string-append "const macros = " (make-katex-macros (cdr (assoc 'latex-macros config)))))))
+                                (script ((src . "katex-loader.js")) ())
+                                (script ((src . "svg-resize.js")) ())))))
+             (processors . ((,(make-tag-pred 'latex) . ,(lambda (config t)
+                                                          (write t)
+                                                          (newline)
+                                                          (if (file-exists? "tmp.tex") (error 'latex-proc "tmp.tex exists"))
+                                                          (let* ((text (cadr t))
+                                                                 (latex-source (string-append "\\documentclass{standalone}"
+                                                                                              (read-config config 'preamble)
+                                                                                              (make-latex-macros (read-config config 'latex-macros))
+                                                                                              "\\begin{document}"
+                                                                                              text
+                                                                                              "\\end{document}"))
+                                                                 (port (open-file-output-port "tmp.tex"
+                                                                                                (file-options no-fail)
+                                                                                                'block
+                                                                                                (make-transcoder (utf-8-codec)))))
+                                                            (display latex-source port)
+                                                            (close-output-port port)
+                                                            (system "tectonic tmp.tex --outfmt pdf")
+                                                            (system "dvisvgm --pdf -f ttf tmp.pdf")
+                                                            ;; get svg
+                                                            (delete-file "tmp.tex")
+                                                            (delete-file "tmp.pdf")
+                                                            (let* ((port (open-file-input-port "tmp.svg"
+                                                                                               (file-options)
+                                                                                               'block
+                                                                                               (make-transcoder (utf-8-codec))))
+                                                                   (svg (get-string-all port)))
+                                                              (close-input-port port)
+                                                              (delete-file "tmp.svg")
+                                                              `(raw ,svg)))))))
              (desc . "Documentation for bwog, a static blog generator written in Scheme.")
              (latex-macros . (("\\Gal" 0 "\\operatorname{Gal}")
                               ("\\tr" 0 "\\operatorname{tr}")
@@ -39,8 +97,7 @@
                               ("\\F" 0 "\\mathbb{F}")
                               ("\\sfC" 0 "\\mathsf{C}")
                               ("\\vphi" 0 "\\varphi")))
-              (processors . ())
-              (preamble . "\\usepackage{amsmath, amssymb, amsthm, latexsym, mathrsfs, eucal, ctex}
+             (preamble . "\\usepackage{amsmath, amssymb, amsthm, latexsym, mathrsfs, eucal, ctex}
 \\usepackage[dvipsnames]{xcolor}
 \\usepackage{tabularx, tikz-cd, tikz, bm}")))
   (files . ("post1")))

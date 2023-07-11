@@ -44,7 +44,7 @@
                                      (display "</" port)
                                      (display tag port)
                                      (display ">" port)))
-                                  (else (error 'html>> "not a character, string, or tree node"))))))
+                                  (else (error 'html>> "not a character, string, or tree node" tree))))))
         ml-writer)))
             
   (define html>> (make-ml-writer html-void-elements))
