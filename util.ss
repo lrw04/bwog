@@ -1,5 +1,7 @@
 (library (util)
-  (export xml-escape
+  (export escape
+          escape-string
+          xml-escape
           tex-escape
           string-escape
           count-from-beginning

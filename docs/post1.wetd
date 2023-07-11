@@ -1,14 +1,17 @@
-`((title . "Post 1: examples")
-  (date . "2023/07/01"))
+`((title . "Post 1: Examples")
+  (processors . ((,char? . ,(lambda (config t)
+                              (escape-string (string t) '((#\. . "!!"))))))))
 ---
 
-!(h 1)Post 1: examples
+!(h 1)Post 1: Examples
 
 Hello, world! @(math)`\GL_n(\F)` @(dmath)`\GL_n(\F)` @(s)*strong* @(em)*emph*
 @(uline)*underline* @(st)*strikethrough* @(verb)`verbatim`
 @(link "https://blog.lrw04.online/")*link* @(img "img.png" "image")
 Revised@(sup)*6* Report on the Algorithmic Language Scheme
 a@(sub)*1* is an integer
+
+a sentence.
 
 :(ol)
 ::(item)
@@ -63,6 +66,8 @@ Hello, world! @(math)`\GL_n(\F)` @(dmath)`\GL_n(\F)` @(s)*strong* @(em)*emph*
 @(link "https://blog.lrw04.online/")*link* @(img "img.png" "image")
 Revised@(sup)*6* Report on the Algorithmic Language Scheme
 a@(sub)*1* is an integer
+
+a sentence.
 
 :(ol)
 ::(item)

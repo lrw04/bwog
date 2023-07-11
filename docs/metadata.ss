@@ -32,8 +32,6 @@
                                 (script ((src . "katex-loader.js")) ())
                                 (script ((src . "svg-resize.js")) ())))))
              (processors . ((,(make-tag-pred 'latex) . ,(lambda (config t)
-                                                          (write t)
-                                                          (newline)
                                                           (if (file-exists? "tmp.tex") (error 'latex-proc "tmp.tex exists"))
                                                           (let* ((text (cadr t))
                                                                  (latex-source (string-append "\\documentclass{standalone}"
@@ -43,12 +41,12 @@
                                                                                               text
                                                                                               "\\end{document}"))
                                                                  (port (open-file-output-port "tmp.tex"
-                                                                                                (file-options no-fail)
-                                                                                                'block
-                                                                                                (make-transcoder (utf-8-codec)))))
+                                                                                              (file-options no-fail)
+                                                                                              'block
+                                                                                              (make-transcoder (utf-8-codec)))))
                                                             (display latex-source port)
                                                             (close-output-port port)
-                                                            (system "tectonic tmp.tex --outfmt pdf")
+                                                            (system "tectonic tmp.tex")
                                                             (system "dvisvgm --pdf -f ttf tmp.pdf")
                                                             ;; get svg
                                                             (delete-file "tmp.tex")
@@ -100,4 +98,4 @@
              (preamble . "\\usepackage{amsmath, amssymb, amsthm, latexsym, mathrsfs, eucal, ctex}
 \\usepackage[dvipsnames]{xcolor}
 \\usepackage{tabularx, tikz-cd, tikz, bm}")))
-  (files . ("post1")))
+  (files . ("getting-started" "post1")))

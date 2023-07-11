@@ -267,8 +267,8 @@
                                          (make-transcoder (utf-8-codec)))))
         (display "<!doctype html>" port)
         (html>> ((file-template file)
-                 config
-                 (process config (file-document-tree file)))
+                 (file-metadata file)
+                 (process (file-metadata file) (file-document-tree file)))
                 port)
         (close-output-port port))))
 
@@ -299,8 +299,6 @@
                                        "}")))
                   macros))))
 
-  
-  
   (define make-katex-macros
     (lambda (macros)
       (string-append "{"

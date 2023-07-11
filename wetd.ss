@@ -98,11 +98,13 @@
     (lambda (port line)
       (letrec ((read-par-iter (lambda (acc)
                                 (let ((c (lookahead-char port)))
-                                  (case c
-                                    ((#\: #\` #\! #\newline)
-                                     `(par
-                                       ,(read-inline-from-string (join-lines (reverse acc)))))
-                                    (else (read-par-iter (cons (get-line port) acc))))))))
+                                  (if (eof-object? c)
+                                      `(par ,(read-inline-from-string (join-lines (reverse acc))))
+                                      (case c
+                                        ((#\: #\` #\! #\newline) ; end of paragraph
+                                         `(par
+                                           ,(read-inline-from-string (join-lines (reverse acc)))))
+                                        (else (read-par-iter (cons (get-line port) acc)))))))))
         (read-par-iter (list line)))))
   
   (define read-container

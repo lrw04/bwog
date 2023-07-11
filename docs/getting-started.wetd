@@ -1,0 +1,151 @@
+`((title . "Getting Started"))
+---
+
+!(h 1)Getting Started
+
+bwog is a static blog generator. Its features include:
+
+::(ul)
+!(item)A flat directory structure
+!(item)S-expression-based markup syntax
+!(item)Extensible markup processors
+!(item)Highly programmable using Scheme functions 
+::
+
+You can see an example of the capabilities of wetd, the markup language
+bwog uses at @(link "post1.html")*Post 1: Examples*.
+
+!(h 2)Dependencies
+
+bwog is dependent on Chez Scheme. The markup extensions this document website
+uses require tectonic and TeX Live (more specifically dvisvgm) in addition to
+Chez Scheme. bwog has builtin utilities for handling LaTeX macros and the
+embedding of LaTeX equations and figures into pages.
+
+!(h 2)Installation
+
+Prepare an empty directory. This will be your repository and directory
+hosting your copy of bwog, your files and assets, as well as the output.
+
+Start by copying all Scheme source files except tests.ss to the directory. 
+Populate @(verb)`Makefile`
+with the following, adapting the value of the variable @(verb)`CHEZ` to your distribution:
+(The author is using Arch Linux which packages the Chez Scheme executable under the name @(verb)`chez`)
+
+``(code makefile)
+CHEZ=chez
+
+all: bwog.ss
+	$(CHEZ) --program bwog.ss .
+
+.PHONY: all
+``
+
+!(h 2)Configuration
+
+Create @(verb)`metadata.ss` under the directory. In it must be an expression that
+evaluates to the following list structure:
+
+``(code scheme)
+((propagation-rules . (*additional rules for composing configuration alists*))
+ (config . ((title . *title as a string*)
+            (link . *link to the website as a string*)
+            (index-template . *a function*)
+            (template . *a function*)
+            (processors . *additional markup processors*)
+            (desc . *description as a string*)))
+ (files . (*list of filenames without the extension*)))
+``
+
+We need to list files in the configuration because neither R@(sup)*6*RS nor
+Chez has builtin support for listing files, unlike Common Lisp.
+
+For a comprehensive example, refer to
+@(link "https://github.com/lrw04/bwog/blob/master/docs/metadata.ss")*@(verb)`metadata.ss`*.
+
+!(h 3)Propagation Rule Format
+
+Propagation rules are a pair of the key that uses the rule and a function taking
+values of the parent and child and returns the new config value. For example, 
+a rule could be:
+
+``(code scheme)
+`(latex-macros . ,(lambda (parent child) (or child parent)))
+``
+
+When a config is not present, @(verb)`#f` is passed to the function.
+
+Builtin propagation rule functions are use-parent, use-child, use-appended, and
+use-string-append. They do what their names suggest.
+
+!(h 3)wetd
+
+wetd is the markup language for bwog. It is parsed in two phases: block level first,
+then inline level. Block level elements are parsed without knowledge of inline level
+elements. Elements are generic and require markup processors to convert them into
+HTML or any other target language.
+
+!(h 4)Block elements
+
+Containers start with a line that begins with one or more @(verb)`:` characters. 
+The number of : characters at the beginning of the start line and end line must
+match. A Scheme datum is read after the starting colons and @(verb)`(append datum (list children))`
+is the result, where @(em)*children* are inline elements read from the enclosed
+lines.
+
+Raw blocks start with a line that begins with one or more @(verb)*@`* characters. 
+Again, the number of backtick characters at the beginning of the start and end
+lines must match. A Scheme datum is read after the starting backticks and @(verb)`(append datum (list string))`
+is the result, where @(em)*string* is the string enclosed by the block.
+
+Leaf blocks take up one line only and start with one or more @(verb)`!` characters.
+A Scheme datum is read after the starting exclamation marks and inline elements are
+read from the remainder of the line. The result is @(verb)`(append datum (list children))`.
+
+Paragraphs are formed by consecutive ordinary lines.
+
+!(h 4)Inline elements
+
+Inline elements are marked with the @@ character. If the @@ character is followed
+by a `, * or another @@, it's considered as an escaped character. Otherwise, the 
+parser attempts to parse a datum from the port, then read the enclosed text. 
+Enclosed text are raw if they are surrounded by the same number of backticks, or
+parsed according to inline element rules if they are surrounded by asterisks.
+
+!(h 3)Templating
+
+bwog comes with XML and XML-like language processors. They take document trees represented
+in S-expressions and prints them in a port. The format they accept is as follows:
+
+``(code scheme)
+(tag alist)
+``
+for a void element, or
+``(code scheme)
+(tag alist (list of children))
+``
+for non-void elements, where @(em)*alist* denotes the node attributes, with symbols
+for the key.
+
+They also accept characters and strings. Raw strings can be denoted as follows:
+
+``(code scheme)
+(raw raw-string)
+``
+
+!(h 3)Markup Processors
+
+Markup Processors take wetd documents in the parsed form and return HTML trees as
+represented by S-expressions. They are pairs of a predicate for whether the current
+document tree should be processed by the processor, and a function taking local (file) config
+and the document tree, returning HTML tree.
+
+!(h 4)Default Markup Processors
+
+Default markup processors are defined in @(link "https://github.com/lrw04/bwog/blob/master/generator.ss")*@(verb)`generator.ss`*.
+Their usages can be found in the source code of @(link "post1.html")*Post 1: Examples*.
+
+!(h 3)Writing
+
+When you create a new file, put an expression that evaluates to config first in the file,
+and separate it with wetd content with a line @(verb)`---`.
