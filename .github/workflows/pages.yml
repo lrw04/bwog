@@ -37,7 +37,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build pages
-        run: sudo apt update && sudo apt install -y chezscheme dvisvgm && make CHEZ=chezscheme
+        run: sudo apt update && sudo apt install -y chezscheme dvisvgm mupdf-tools && make CHEZ=chezscheme
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
