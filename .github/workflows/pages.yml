@@ -34,7 +34,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Build pages
-        run: sudo apt update && sudo apt install chezscheme && make CHEZ=chezscheme
+        run: sudo apt update && sudo apt install -y chezscheme && make CHEZ=chezscheme
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
