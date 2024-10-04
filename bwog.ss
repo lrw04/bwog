@@ -151,6 +151,18 @@
           #f
           (string=? t (substring s (- sl tl) sl))))))
 
+;; chez scheme 9.5 doesn't have this
+(if (not (top-level-bound? 'path-build))
+    (define-top-level-value 'path-build
+      (let ((sep (directory-separator)))
+        (lambda (a b)
+          (cond ((zero? (string-length a)) b)
+                ((zero? (string-length b)) a)
+                ((or (char=? (string-ref a (- (string-length a) 1)) sep)
+                     (char=? (string-ref b 0) sep))
+                 (string-append a b))
+                (else (string-append a (string sep) b)))))))
+
 ;;; dirty lil parser for the markup language
 (define read-inline
   (lambda (port end)
