@@ -1,4 +1,4 @@
-`((title . "Getting Started"))
+(add-local-config `((title . "Getting Started")))
 ---
 
 !(h 1)Getting Started
@@ -6,10 +6,9 @@
 bwog is a static blog generator. Its features include:
 
 ::(ul)
-!(item)A flat directory structure
 !(item)S-expression-based markup syntax
 !(item)Extensible markup processors
-!(item)Highly programmable using Scheme functions 
+!(item)Highly programmable in Scheme
 ::
 
 You can see an example of the capabilities of wetd, the markup language
@@ -18,65 +17,72 @@ bwog uses at @(link "post1.html")*Post 1: Examples*.
 !(h 2)Dependencies
 
 bwog is dependent on Chez Scheme. The markup extensions this document website
-uses require tectonic and TeX Live (more specifically dvisvgm) in addition to
-Chez Scheme. bwog has builtin utilities for handling LaTeX macros and the
-embedding of LaTeX equations and figures into pages.
+uses require tectonic, dvisvgm, and deno (for KaTeX and highlight.js) in
+addition to Chez Scheme.
 
 !(h 2)Installation
 
-Prepare an empty directory. This will be your repository and directory
-hosting your copy of bwog, your files and assets, as well as the output.
-
-Start by copying all Scheme source files except tests.ss to the directory. 
-Populate @(verb)`Makefile`
-with the following, adapting the value of the variable @(verb)`CHEZ` to your distribution:
-(The author is using Arch Linux which packages the Chez Scheme executable under the name @(verb)`chez`)
-
-``(code makefile)
-CHEZ=chez
-
-all: bwog.ss
-	$(CHEZ) --program bwog.ss .
-
-.PHONY: all
-``
+Prepare a directory. This will be your repository hosting your files and assets,
+as well as the HTML output. Every subdirectory under it should have a
+@(verb)`config.ss` file containing the configuration.
 
 !(h 2)Configuration
 
-Create @(verb)`metadata.ss` under the directory. In it must be an expression that
-evaluates to the following list structure:
+Configuration fragments exist at the directory level and the file level.
+Configuration for bwog is mostly an ordinary Scheme program. The goal of such a
+program is often to modify @(verb)`*config*` in an environment local to what it
+belongs to, and the resulting environment for a file/directory (and the *config*
+inside) is obtained by applying changes at every node on its path from the root,
+closer to the root first.
 
-``(code scheme)
-((propagation-rules . (*additional rules for composing configuration alists*))
- (config . ((title . *title as a string*)
-            (link . *link to the website as a string*)
-            (index-template . *a function*)
-            (template . *a function*)
-            (processors . *additional markup processors*)
-            (desc . *description as a string*)))
- (files . (*list of filenames without the extension*)))
-``
+You should probably access local configuration with @(verb)`define-config-field`,
+@(verb)`add-local-config` and @(verb)`config` because they are written to always
+refer to *config* through the value of (interaction-environment). If you define
+some function using *config* directly that is called in another environment,
+*config* in the environment in which the function is defined will be accessed
+because of lexical binding.
 
-We need to list files in the configuration because neither R@(sup)*6*RS nor
-Chez has builtin support for listing files, unlike Common Lisp.
+*config* is an alist with symbol keys, and when you modify it through @(verb)`add-local-config`,
+the original *config* and the one you specify will be composed together. The
+specific behavior of this composition process can be customized using the macro
+@(verb)`define-config-field`. The composition rule you pass to it is called every
+time a composition happens, with the values of the field the rule belongs to in
+the original and the new one passed to it. (#f is passed when it's absent) Builtin
+composition rules are @(verb)`use-parent`, @(verb)`use-child`, @(verb)`use-append`,
+and @(verb)`use-string-append`, which does what their names suggest.
 
-For a comprehensive example, refer to
-@(link "https://github.com/lrw04/bwog/blob/master/docs/metadata.ss")*@(verb)`metadata.ss`*.
+The composition rules are stored in *composition-rules*. As with *config*, access
+it through interaction-environment. It's an alist with symbol keys, mapping from
+config field names to composition rules.
 
-!(h 3)Propagation Rule Format
+Refer to (maybe copy from)
+@(link "https://github.com/lrw04/bwog/blob/master/docs/config.ss")*docs/config.ss*
+if documentation is unclear. (it is)
 
-Propagation rules are a pair of the key that uses the rule and a function taking
-values of the parent and child and returns the new config value. For example, 
-a rule could be:
+Internally, (but because bwog runs your code, you need to know) directories are
+lists of the symbol @(verb)`dir`, its environment, an alist with @(s)*stems of*
+the filenames as keys and file representations as values, and an alist with
+subdirectory names as keys and directory representations as values. Files are
+lists of the symbol @(verb)`file`, its environment, its wetd tree and its HTML tree.
 
-``(code scheme)
-`(latex-macros . ,(lambda (parent child) (or child parent)))
-``
+!(h 3)Required configuration
 
-When a config is not present, @(verb)`#f` is passed to the function.
+Four configuration fields are predefined: markup-processors, index-template,
+file-template, and after.
 
-Builtin propagation rule functions are use-parent, use-child, use-appended, and
-use-string-append. They do what their names suggest.
+markup-processors is a list of pairs whose car is a predicate for whether this
+processor applies to a given wetd node, and cdr is the processor that takes a wetd
+node and returns an HTML node. They are attempted on the wetd node from front to back.
+
+index-template and file-template are run by bwog to generate HTML trees for directory
+indexes and files respectively. index-template is given the root directory and a list
+of strings representing the path to the directory the index is in, and file-template
+is given the root directory, a list of strings representing the path to the file,
+and the file's internal representation.
+
+after is run with the root directory, the path of the root directory on the filesystem,
+and a list of strings representing the path to the subdirectory. it will be run for
+every subdirectory.
 
 !(h 3)wetd
 
@@ -84,6 +90,9 @@ wetd is the markup language for bwog. It is parsed in two phases: block level fi
 then inline level. Block level elements are parsed without knowledge of inline level
 elements. Elements are generic and require markup processors to convert them into
 HTML or any other target language.
+
+In wetd files, the beginning is configuration for the file, terminated by a line that
+contains three hyphens (@(verb)`---`).
 
 !(h 4)Block elements
 
@@ -142,10 +151,5 @@ and the document tree, returning HTML tree.
 
 !(h 4)Default Markup Processors
 
-Default markup processors are defined in @(link "https://github.com/lrw04/bwog/blob/master/generator.ss")*@(verb)`generator.ss`*.
+Default markup processors are defined in @(link "https://github.com/lrw04/bwog/blob/master/bwog.ss")*@(verb)`bwog.ss`*.
 Their usages can be found in the source code of @(link "post1.html")*Post 1: Examples*.
-
-!(h 3)Writing
-
-When you create a new file, put an expression that evaluates to config first in the file,
-and separate it with wetd content with a line @(verb)`---`.

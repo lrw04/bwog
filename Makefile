@@ -1,9 +1,6 @@
 CHEZ=chez
 
 doc: bwog.ss
-	$(CHEZ) --program bwog.ss docs
-
-test: tests.ss
-	$(CHEZ) --program tests.ss
+	$(CHEZ) --script bwog.ss docs
 
 .PHONY: doc test

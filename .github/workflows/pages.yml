@@ -36,6 +36,9 @@ jobs:
       - uses: wtfjoke/setup-tectonic@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
       - name: Build pages
         run: sudo apt update && sudo apt install -y chezscheme dvisvgm mupdf-tools texlive && make CHEZ=chezscheme
       - name: Upload artifact

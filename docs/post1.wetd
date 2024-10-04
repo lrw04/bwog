@@ -1,6 +1,6 @@
-`((title . "Post 1: Examples")
-  (processors . ((,char? . ,(lambda (config t)
-                              (escape-string (string t) '((#\. . "!!"))))))))
+(add-local-config `((title . "Post 1: Examples")
+                    (markup-processors . ((,char? . ,(lambda (t)
+                                                (escape-string (string t) '((#\. . "!!")))))))))
 ---
 
 !(h 1)Post 1: Examples
